@@ -39,6 +39,13 @@ SITE_CONFIG = {
                 "title_selector": ".card_title",
                 "period_selector": ".info_text"
             },
+        "여기어떄":
+            {
+                "url": "https://gccompany.career.greetinghr.com/",  # 실제 사이트 URL로 대체 필요
+                "item_selector": "ul.Flex__FlexCol-sc-uu75bp-1.iKWWXF > a",  # 각 공고에 대한 링크
+                "title_selector": "div.Textstyled__Text-sc-55g6e4-0.dYCGQ",  # 공고명
+                "category_selector": "span.Textstyled__Text-sc-55g6e4-0.gDzMae"  # 카테고리
+            }
     }
 
 def initialize_driver():
@@ -207,6 +214,40 @@ def Snow(request):
             crawled_data['data'].append({'name': name, 'period': period})
         else:
             crawled_data['data'].append({'name': name, 'period': period})
+
+    driver.quit()
+    return JsonResponse(crawled_data, safe=False)
+
+# 여기어때
+def GccCompany(request):
+    driver = initialize_driver()
+    config = SITE_CONFIG["여기어떄"]
+    driver.implicitly_wait(5)
+    driver.get(config["url"])
+    driver.implicitly_wait(5)
+
+    # 무한 스크롤
+    perform_infinite_scroll(driver)
+
+    keywords = []
+    crawled_data = {
+        'url': config["url"],
+        'data': []
+    }
+
+    items = driver.find_elements(By.CSS_SELECTOR, config['item_selector'])
+
+    for item in items:
+        category_elements = item.find_elements(By.CSS_SELECTOR, config['category_selector'])
+        # Check if '개발·데이터' is in any of the category elements
+        if any("개발·데이터" in cat.text for cat in category_elements):
+            name = item.find_element(By.CSS_SELECTOR, config['title_selector']).text
+            category = "개발·데이터"
+
+            if keywords and any(keyword.lower() in name.lower() for keyword in keywords):
+                crawled_data['data'].append({'name': name, 'period': category})
+            else:
+                crawled_data['data'].append({'name': name, 'period': category})
 
     driver.quit()
     return JsonResponse(crawled_data, safe=False)
