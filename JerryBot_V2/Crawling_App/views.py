@@ -31,7 +31,14 @@ SITE_CONFIG = {
                 "item_selector": ".recruit-board__list .recruit-board__item",
                 "title_selector": ".recruit-board__title",
                 "period_selector": ".recruit-board__date"
-            }
+            },
+        "스노우":
+            {
+                "url": "https://recruit.snowcorp.com/rcrt/list.do",
+                "item_selector": "li.card_item",
+                "title_selector": ".card_title",
+                "period_selector": ".info_text"
+            },
     }
 
 def initialize_driver():
@@ -169,6 +176,37 @@ def Hl_klemove(request):
                 crawled_data['data'].append({'name': name, 'period': period})
             else:
                 crawled_data['data'].append({'name': name, 'period': period})
+
+    driver.quit()
+    return JsonResponse(crawled_data, safe=False)
+
+# 스노우
+def Snow(request):
+    driver = initialize_driver()
+    config = SITE_CONFIG["스노우"]
+    driver.implicitly_wait(5)
+    driver.get(config["url"])
+    driver.implicitly_wait(5)
+
+    # 무한 스크롤
+    perform_infinite_scroll(driver)
+
+    keywords = []
+    crawled_data = {
+        'url': config["url"],
+        'data': []
+    }
+
+    items = driver.find_elements(By.CSS_SELECTOR, config['item_selector'])
+
+    for item in items:
+        name = item.find_element(By.CSS_SELECTOR, config['title_selector']).text
+        period = item.find_elements(By.CSS_SELECTOR, config['period_selector'])[-1].text
+
+        if keywords and any(keyword.lower() in name.lower() for keyword in keywords):
+            crawled_data['data'].append({'name': name, 'period': period})
+        else:
+            crawled_data['data'].append({'name': name, 'period': period})
 
     driver.quit()
     return JsonResponse(crawled_data, safe=False)
