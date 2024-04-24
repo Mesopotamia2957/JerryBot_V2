@@ -4,6 +4,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+
 
 import time
 import json
@@ -38,7 +40,18 @@ def initialize_driver():
     """
     options = Options()
     options.add_argument('--headless')  # 헤드리스 모드 활성화
-    options.add_argument('--window-size=1920x1080')  # 창 크기 지정
+    options.add_argument('--no-sandbox')  # 보안 취약점 노출을 막는 sandbox 비 활성화 (어차피 기업 채용 페이지니까)
+    options.add_argument('--disable-dev-shm-usage')  # 공유 메모리 파일 시스템 크기 제한 X
+
+    # 이미지 로드 안함, 대역폭 절약하고 로딩 속도 향상
+    options.add_argument('--disable-images')
+    options.add_experimental_option("prefs", {'profile.managed_default_content_settings.images': 2})
+    options.add_argument('--blink-settings=imagesEnabled=false')
+
+    # 페이지가 완전히 로드되는 것을 기다리지 않음
+    caps = DesiredCapabilities.CHROME
+    caps["pageLoadStrategy"] = "none"
+
     options.add_experimental_option("detach", True)  # 화면 꺼짐 방지
     options.add_experimental_option("excludeSwitches", ["enable-logging"])  # 불필요한 에러 메시지 제거
     driver = webdriver.Chrome(options=options)
