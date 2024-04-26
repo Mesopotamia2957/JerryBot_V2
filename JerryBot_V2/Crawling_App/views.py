@@ -54,6 +54,13 @@ SITE_CONFIG = {
                 "item_selector": "li.css-1q2dra3",  # Jobs list item container
                 "title_selector": "h3 a.css-19uc56f",  # Job title
                 "posted_selector": "div[data-automation-id='postedOn'] dd.css-129m7dg",  # Posted on information
+            },
+        "플렉스":
+            {
+                "url": "https://flex.careers.team/job-descriptions",
+                "item_selector": "ul.c-jtvHKu > li.c-kouIyT",
+                "title_selector": "div.c-dGcUVj span",
+                "period_selector": "div.c-fyTHaI:last-child"
             }
     }
 
@@ -290,6 +297,47 @@ def Musinsa(request):
             crawled_data['data'].append({'name': name, 'period': posted})
         else:
             crawled_data['data'].append({'name': name, 'period': posted})
+
+    driver.quit()
+    return JsonResponse(crawled_data, safe=False)
+
+# 플렉스
+def Flex(request):
+    driver = initialize_driver()
+    config = SITE_CONFIG["플렉스"]
+    driver.implicitly_wait(5)
+    driver.get(config["url"])
+    driver.implicitly_wait(5)
+
+    WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable(
+            (By.XPATH, "//div[@class='c-gEhxKm c-PJLV c-PJLV-oZJzs-size-default c-PJLV-eesTsS-side-right']"))
+    ).click()
+    WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'c-jYnSkl') and text()='Product']"))
+    ).click()  # Wait for job items to load
+
+    # 무한 스크롤
+    perform_infinite_scroll(driver)
+
+    keywords = []
+    crawled_data = {
+        'url': config["url"],
+        'data': []
+    }
+
+    # Wait for job items to load
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, config['item_selector'])))
+    items = driver.find_elements(By.CSS_SELECTOR, config['item_selector'])
+
+    for item in items:
+        name = item.find_element(By.CSS_SELECTOR, config['title_selector']).text
+        period = item.find_element(By.CSS_SELECTOR, config['period_selector']).text
+
+        if keywords and any(keyword.lower() in name.lower() for keyword in keywords):
+            crawled_data['data'].append({'name': name, 'period': period})
+        else:
+            crawled_data['data'].append({'name': name, 'period': period})
 
     driver.quit()
     return JsonResponse(crawled_data, safe=False)

@@ -9,4 +9,5 @@ urlpatterns = [
     path('snow/', views.Snow, name='snow'),
     path('gcccompany/', views.GccCompany, name='gcccompany'),
     path('musinsa/', views.Musinsa, name='musinsa'),
+    path('flex/', views.Flex, name='flex'),
 ]
