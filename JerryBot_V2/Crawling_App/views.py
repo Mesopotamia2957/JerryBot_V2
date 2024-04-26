@@ -5,6 +5,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 
 import time
@@ -45,6 +47,13 @@ SITE_CONFIG = {
                 "item_selector": "ul.Flex__FlexCol-sc-uu75bp-1.iKWWXF > a",  # 각 공고에 대한 링크
                 "title_selector": "div.Textstyled__Text-sc-55g6e4-0.dYCGQ",  # 공고명
                 "category_selector": "span.Textstyled__Text-sc-55g6e4-0.gDzMae"  # 카테고리
+            },
+        "MUSINSA":
+            {
+                "url": "https://musinsa.wd3.myworkdayjobs.com/ko-KR/MUSINSA_Careers/details/IT-Solution_JR0000001255-1?timeType=f3936bc1654610169c62c6d056dd0000&workerSubType=b420f29168e710014992a7ce0ab40000&jobFamilyGroup=770679cb715310017a8f889491da0000&jobFamilyGroup=b420f29168e710016d8808495abe0000&jobFamilyGroup=b420f29168e710016d88023e1a590000",
+                "item_selector": "li.css-1q2dra3",  # Jobs list item container
+                "title_selector": "h3 a.css-19uc56f",  # Job title
+                "posted_selector": "div[data-automation-id='postedOn'] dd.css-129m7dg",  # Posted on information
             }
     }
 
@@ -248,6 +257,39 @@ def GccCompany(request):
                 crawled_data['data'].append({'name': name, 'period': category})
             else:
                 crawled_data['data'].append({'name': name, 'period': category})
+
+    driver.quit()
+    return JsonResponse(crawled_data, safe=False)
+
+# 무신사
+def Musinsa(request):
+    driver = initialize_driver()
+    config = SITE_CONFIG["MUSINSA"]
+    driver.implicitly_wait(5)
+    driver.get(config["url"])
+    driver.implicitly_wait(5)
+
+    # 무한 스크롤
+    perform_infinite_scroll(driver)
+
+    keywords = []
+    crawled_data = {
+        'url': config["url"],
+        'data': []
+    }
+
+    # Wait for job items to load
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, config['item_selector'])))
+    items = driver.find_elements(By.CSS_SELECTOR, config['item_selector'])
+
+    for item in items:
+        name = item.find_element(By.CSS_SELECTOR, config['title_selector']).text
+        posted = item.find_element(By.CSS_SELECTOR, config['posted_selector']).text
+
+        if keywords and any(keyword.lower() in name.lower() for keyword in keywords):
+            crawled_data['data'].append({'name': name, 'period': posted})
+        else:
+            crawled_data['data'].append({'name': name, 'period': posted})
 
     driver.quit()
     return JsonResponse(crawled_data, safe=False)
