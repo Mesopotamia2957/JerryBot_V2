@@ -126,5 +126,3 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SLACK_TOKEN = config('SLACK_TOKEN')
-SLACK_CHANNEL = config('SLACK_CHANNEL')
-SITE_CONFIG = config('SITE_CONFIG')
