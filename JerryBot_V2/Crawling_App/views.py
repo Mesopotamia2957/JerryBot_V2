@@ -7,7 +7,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
 import time
 import json
@@ -61,6 +61,13 @@ SITE_CONFIG = {
                 "item_selector": "ul.c-jtvHKu > li.c-kouIyT",
                 "title_selector": "div.c-dGcUVj span",
                 "period_selector": "div.c-fyTHaI:last-child"
+            },
+        "넥슨":
+            {
+                "url": "https://career.nexon.com/user/recruit/member/postList?joinCorp=NX&jobGroupCd=22&reSubj=",
+                "item_selector": "div.wrapPostGroup ul li",
+                "title_selector": "dt",
+                "period_selector": "dd.dueDate"
             }
     }
 
@@ -340,4 +347,51 @@ def Flex(request):
             crawled_data['data'].append({'name': name, 'period': period})
 
     driver.quit()
+    return JsonResponse(crawled_data, safe=False)
+
+# 넥슨
+def Nexon(request):
+    driver = initialize_driver()
+    config = SITE_CONFIG["넥슨"]
+    driver.implicitly_wait(5)
+    driver.get(config["url"])
+    driver.implicitly_wait(5)
+
+    # 무한 스크롤
+    perform_infinite_scroll(driver)
+
+    keywords = []
+    crawled_data = {
+        'url': config["url"],
+        'data': []
+    }
+
+    try:
+        while True:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, config['item_selector']))
+            )
+            items = driver.find_elements(By.CSS_SELECTOR, config['item_selector'])
+
+            for item in items:
+                name = item.find_element(By.CSS_SELECTOR, config['title_selector']).text
+                period = item.find_element(By.CSS_SELECTOR, config['period_selector']).text
+                crawled_data['data'].append({'name': name, 'period': period})
+
+            # Attempt to find and click the next page button
+            try:
+                next_button = driver.find_element(By.CSS_SELECTOR, "a.page.next:not([disabled])")
+                if next_button:
+                    next_button.click()
+                else:
+                    break
+            except NoSuchElementException:
+                print("Reached the last page.")
+                break
+
+    except TimeoutException:
+        print("Timeout while loading the page elements.")
+    finally:
+        driver.quit()
+
     return JsonResponse(crawled_data, safe=False)
