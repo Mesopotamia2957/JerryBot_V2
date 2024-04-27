@@ -68,6 +68,13 @@ SITE_CONFIG = {
                 "item_selector": "div.wrapPostGroup ul li",
                 "title_selector": "dt",
                 "period_selector": "dd.dueDate"
+            },
+        "두들린":
+            {
+                "url": "https://www.doodlin.co.kr/career#3276397a-a988-4ca5-ab47-9aa05e9cce30",
+                "item_selector": "ul.Flex__FlexCol-sc-uu75bp-1.iKWWXF > a",  # 각 공고에 대한 링크
+                "title_selector": "div.Textstyled__Text-sc-55g6e4-0.dYCGQ",  # 공고명
+                "category_selector": "span.Textstyled__Text-sc-55g6e4-0.gDzMae"  # 카테고리
             }
     }
 
@@ -394,4 +401,44 @@ def Nexon(request):
     finally:
         driver.quit()
 
+    return JsonResponse(crawled_data, safe=False)
+
+# 플렉스
+def Doodlin(request):
+    driver = initialize_driver()
+    config = SITE_CONFIG["두들린"]
+    driver.implicitly_wait(5)
+    driver.get(config["url"])
+    driver.implicitly_wait(5)
+
+    WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable(
+            (By.XPATH, "//label[contains(@class, 'CheckBoxstyled__Layout-sc-') and contains(., 'Dev')]")
+        )
+    ).click()
+
+    # 무한 스크롤
+    perform_infinite_scroll(driver)
+
+    keywords = []
+    crawled_data = {
+        'url': config["url"],
+        'data': []
+    }
+
+    # Wait for job items to load
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, config['item_selector'])))
+    items = driver.find_elements(By.CSS_SELECTOR, config['item_selector'])
+
+    for item in items:
+        category_elements = item.find_elements(By.CSS_SELECTOR, config['category_selector'])
+        # Check if '개발·데이터' is in any of the category elements
+        name = item.find_element(By.CSS_SELECTOR, config['title_selector']).text
+        category = item.find_element(By.CSS_SELECTOR, config['category_selector']).text
+        if keywords and any(keyword.lower() in name.lower() for keyword in keywords):
+            crawled_data['data'].append({'name': name, 'period': category})
+        else:
+            crawled_data['data'].append({'name': name, 'period': category})
+
+    driver.quit()
     return JsonResponse(crawled_data, safe=False)
