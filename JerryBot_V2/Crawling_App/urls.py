@@ -12,4 +12,6 @@ urlpatterns = [
     path('flex/', views.Flex, name='flex'),
     path('nexon/', views.Nexon, name='nexon'),
     path('doodlin/', views.Doodlin, name='doodlin'),
+    path('ssg/', views.SSG, name='ssg'),
+    path('shinsegaeinc/', views.Shinsegaeinc, name='shinsegaeinc'),
 ]

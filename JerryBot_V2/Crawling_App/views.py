@@ -75,6 +75,20 @@ SITE_CONFIG = {
                 "item_selector": "ul.Flex__FlexCol-sc-uu75bp-1.iKWWXF > a",  # 각 공고에 대한 링크
                 "title_selector": "div.Textstyled__Text-sc-55g6e4-0.dYCGQ",  # 공고명
                 "category_selector": "span.Textstyled__Text-sc-55g6e4-0.gDzMae"  # 카테고리
+            },
+        "SSG":
+            {
+                "url": "https://ssg.career.greetinghr.com/",
+                "item_selector": "ul.Flex__FlexCol-sc-uu75bp-1.iKWWXF > a",  # 각 공고에 대한 링크
+                "title_selector": "div.Textstyled__Text-sc-55g6e4-0.dYCGQ",  # 공고명
+                "category_selector": "span.Textstyled__Text-sc-55g6e4-0.gDzMae"  # 카테고리
+            },
+        "신세계아이엔씨":
+            {
+                "url": "https://shinsegaeinc.recruiter.co.kr/career/home",
+                "item_selector": ".RecruitList_list-item__RF9iK",
+                "title_selector": ".RecruitList_title__nyhAL",
+                "period_selector": ".RecruitList_date__4RH5k p"
             }
     }
 
@@ -83,7 +97,7 @@ def initialize_driver():
     Initialize and return a Selenium WebDriver with specified options.
     """
     options = Options()
-    options.add_argument('--headless')  # 헤드리스 모드 활성화
+    # options.add_argument('--headless')  # 헤드리스 모드 활성화
     options.add_argument('--no-sandbox')  # 보안 취약점 노출을 막는 sandbox 비 활성화 (어차피 기업 채용 페이지니까)
     options.add_argument('--disable-dev-shm-usage')  # 공유 메모리 파일 시스템 크기 제한 X
 
@@ -102,22 +116,43 @@ def initialize_driver():
     return driver
 
 
-def perform_infinite_scroll(driver: WebDriver):
+import time
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+
+def perform_infinite_scroll(driver):
     """
     Perform an infinite scroll until no more new page content loads.
 
     Args:
-    driver (WebDriver): The Selenium WebDriver instance used for browsing.
+        driver (WebDriver): The Selenium WebDriver instance used for browsing.
     """
-    initial_scroll_position = driver.execute_script("return window.scrollY")
+    last_height = driver.execute_script("return document.body.scrollHeight")
+
     while True:
         driver.find_element(By.CSS_SELECTOR, 'body').send_keys(Keys.END)
-        # Wait for page content to load
-        time.sleep(2)
-        current_scroll_position = driver.execute_script("return window.scrollY")
-        if current_scroll_position == initial_scroll_position:
-            break
-        initial_scroll_position = current_scroll_position
+        # Wait for the page to load more content
+        time.sleep(2)  # You may adjust this sleep time based on observed load times
+
+        # Wait for any AJAX-loaded content (adjust the timeout as needed)
+        WebDriverWait(driver, 10).until(
+            lambda driver: driver.execute_script("return document.readyState") == "complete"
+        )
+
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            # Try scrolling a bit more to see if it triggers any more content to load
+            driver.find_element(By.CSS_SELECTOR, 'body').send_keys(Keys.PAGE_UP)
+            time.sleep(1)
+            driver.find_element(By.CSS_SELECTOR, 'body').send_keys(Keys.END)
+            time.sleep(2)  # Wait again to see if more content loads
+            new_height = driver.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
+                break  # If the height still hasn't changed, we assume we've reached the bottom
+        last_height = new_height
 
 
 # 네이버
@@ -441,4 +476,89 @@ def Doodlin(request):
             crawled_data['data'].append({'name': name, 'period': category})
 
     driver.quit()
+    return JsonResponse(crawled_data, safe=False)
+
+# SSG
+def SSG(request):
+    driver = initialize_driver()
+    config = SITE_CONFIG["SSG"]
+    driver.implicitly_wait(5)
+    driver.get(config["url"])
+    driver.implicitly_wait(5)
+
+    # 무한 스크롤
+    perform_infinite_scroll(driver)
+
+    keywords = []
+    crawled_data = {
+        'url': config["url"],
+        'data': []
+    }
+
+    # Wait for job items to load
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, config['item_selector'])))
+    items = driver.find_elements(By.CSS_SELECTOR, config['item_selector'])
+
+    for item in items:
+        category_elements = item.find_elements(By.CSS_SELECTOR, config['category_selector'])
+        # Check if '개발·데이터' is in any of the category elements
+        name = item.find_element(By.CSS_SELECTOR, config['title_selector']).text
+        category = item.find_element(By.CSS_SELECTOR, config['category_selector']).text
+        if keywords and any(keyword.lower() in name.lower() for keyword in keywords):
+            crawled_data['data'].append({'name': name, 'period': category})
+        else:
+            crawled_data['data'].append({'name': name, 'period': category})
+
+    driver.quit()
+    return JsonResponse(crawled_data, safe=False)
+
+# 신세계아이엔씨
+def Shinsegaeinc(request):
+    driver = initialize_driver()
+    config = SITE_CONFIG["신세계아이엔씨"]
+    driver.get(config["url"])
+    time.sleep(1)
+    perform_infinite_scroll(driver)
+
+    WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, "div.Dropdown_selected-name__j7u3t"))
+    ).click()
+    time.sleep(1)
+    # Select 'IT 서비스' from the dropdown
+    WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, "//div[@class='List_name__LXyi6' and text()='IT 서비스']"))
+    ).click()
+    time.sleep(1)
+    crawled_data = {
+        'url': config["url"],
+        'data': []
+    }
+
+    try:
+        while True:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, config['item_selector']))
+            )
+            items = driver.find_elements(By.CSS_SELECTOR, config['item_selector'])
+
+            for item in items:
+                name = item.find_element(By.CSS_SELECTOR, config['title_selector']).text
+                period_elements = item.find_elements(By.CSS_SELECTOR, config['period_selector'])
+                period = ' '.join([pe.text for pe in period_elements if pe.text])
+                crawled_data['data'].append({'name': name, 'period': period})
+
+            # Check if the next page button is available and not disabled
+            next_button_elements = driver.find_elements(By.CSS_SELECTOR,
+                                                        "button.Pagination_next__fY4nB:not([disabled])")
+            if next_button_elements:
+                next_button_elements[0].click()
+                time.sleep(0.3)  # Wait for the page to load; adjust time based on actual load time
+            else:
+                break
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+    finally:
+        driver.quit()
+
     return JsonResponse(crawled_data, safe=False)
