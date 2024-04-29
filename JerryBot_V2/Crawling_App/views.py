@@ -1,16 +1,16 @@
-from django.http import JsonResponse, HttpResponse
+import time
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-import time
-import json
+from django.http import JsonResponse, HttpResponse
 
 SITE_CONFIG = {
         "네이버":
@@ -92,6 +92,13 @@ SITE_CONFIG = {
             }
     }
 
+# 기업 리스트
+def company_list(request):
+    company_list = {}
+    for List in SITE_CONFIG:
+        company_list[List] = SITE_CONFIG[List]['url']
+    return JsonResponse(company_list, safe=False)
+
 def initialize_driver():
     """
     Initialize and return a Selenium WebDriver with specified options.
@@ -114,14 +121,6 @@ def initialize_driver():
     options.add_experimental_option("excludeSwitches", ["enable-logging"])  # 불필요한 에러 메시지 제거
     driver = webdriver.Chrome(options=options)
     return driver
-
-
-import time
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-
 
 def perform_infinite_scroll(driver: WebDriver):
     """
