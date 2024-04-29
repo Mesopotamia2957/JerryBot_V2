@@ -123,36 +123,22 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
-def perform_infinite_scroll(driver):
+def perform_infinite_scroll(driver: WebDriver):
     """
     Perform an infinite scroll until no more new page content loads.
 
     Args:
-        driver (WebDriver): The Selenium WebDriver instance used for browsing.
+    driver (WebDriver): The Selenium WebDriver instance used for browsing.
     """
-    last_height = driver.execute_script("return document.body.scrollHeight")
-
+    initial_scroll_position = driver.execute_script("return window.scrollY")
     while True:
         driver.find_element(By.CSS_SELECTOR, 'body').send_keys(Keys.END)
-        # Wait for the page to load more content
-        time.sleep(2)  # You may adjust this sleep time based on observed load times
-
-        # Wait for any AJAX-loaded content (adjust the timeout as needed)
-        WebDriverWait(driver, 10).until(
-            lambda driver: driver.execute_script("return document.readyState") == "complete"
-        )
-
-        new_height = driver.execute_script("return document.body.scrollHeight")
-        if new_height == last_height:
-            # Try scrolling a bit more to see if it triggers any more content to load
-            driver.find_element(By.CSS_SELECTOR, 'body').send_keys(Keys.PAGE_UP)
-            time.sleep(1)
-            driver.find_element(By.CSS_SELECTOR, 'body').send_keys(Keys.END)
-            time.sleep(2)  # Wait again to see if more content loads
-            new_height = driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
-                break  # If the height still hasn't changed, we assume we've reached the bottom
-        last_height = new_height
+        # Wait for page content to load
+        time.sleep(1)
+        current_scroll_position = driver.execute_script("return window.scrollY")
+        if current_scroll_position == initial_scroll_position:
+            break
+        initial_scroll_position = current_scroll_position
 
 
 # 네이버
