@@ -104,7 +104,7 @@ def initialize_driver():
     Initialize and return a Selenium WebDriver with specified options.
     """
     options = Options()
-    # options.add_argument('--headless')  # 헤드리스 모드 활성화
+    options.add_argument('--headless')  # 헤드리스 모드 활성화
     options.add_argument('--no-sandbox')  # 보안 취약점 노출을 막는 sandbox 비 활성화 (어차피 기업 채용 페이지니까)
     options.add_argument('--disable-dev-shm-usage')  # 공유 메모리 파일 시스템 크기 제한 X
 
