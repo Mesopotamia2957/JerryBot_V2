@@ -15,4 +15,5 @@ urlpatterns = [
     path('doodlin/', views.Doodlin, name='doodlin'),
     path('ssg/', views.SSG, name='ssg'),
     path('shinsegaeinc/', views.Shinsegaeinc, name='shinsegaeinc'),
+    path('yanolja/', views.Yanolja, name='yanolja'),
 ]
