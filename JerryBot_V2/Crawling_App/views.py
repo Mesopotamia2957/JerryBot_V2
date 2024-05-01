@@ -1,5 +1,5 @@
 import time
-
+import logging
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -96,6 +96,13 @@ SITE_CONFIG = {
                 "item_selector": "ul.Flex__FlexCol-sc-uu75bp-1.iKWWXF > a",  # 각 공고에 대한 링크
                 "title_selector": "div.Textstyled__Text-sc-55g6e4-0.dYCGQ",  # 공고명
                 "category_selector": "span.Textstyled__Text-sc-55g6e4-0.gDzMae"  # 카테고리
+            },
+        "라인":
+            {
+                "url": "https://careers.linecorp.com/jobs?ca=Engineering&ci=Seoul,Bundang&co=East%20Asia",
+                "item_selector": "ul.job_list > li",
+                "title_selector": "h3.title",  # 공고명
+                "period_selector": "span.date"  # 기간
             }
     }
 
@@ -614,4 +621,40 @@ def Yanolja(request):
             crawled_data['data'].append({'name': name, 'period': category})
 
     driver.quit()
+    return JsonResponse(crawled_data, safe=False)
+
+# 라인
+def Line(request):
+    driver = initialize_driver()
+    config = SITE_CONFIG["라인"]
+    driver.implicitly_wait(5)
+    driver.get(config["url"])
+    driver.implicitly_wait(5)
+
+    # 무한 스크롤
+    perform_infinite_scroll(driver)
+
+    keywords = []
+    crawled_data = {
+        'url': config["url"],
+        'data': []
+    }
+    try:
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, config['item_selector']))
+        )
+        items = driver.find_elements(By.CSS_SELECTOR, config['item_selector'])
+        # logging.info(f"Found {len(items)} items.")
+        for item in items:
+            name = item.find_element(By.CSS_SELECTOR, config['title_selector']).text
+            period = item.find_element(By.CSS_SELECTOR, config['period_selector']).text
+            # logging.info(f"Crawled item: {name}, {period}")
+            if keywords and any(keyword.lower() in name.lower() for keyword in keywords):
+                crawled_data['data'].append({'name': name, 'period': period})
+            else:
+                crawled_data['data'].append({'name': name, 'period': period})
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+    finally:
+        driver.quit()
     return JsonResponse(crawled_data, safe=False)
