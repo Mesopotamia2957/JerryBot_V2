@@ -17,4 +17,5 @@ urlpatterns = [
     path('shinsegaeinc/', views.Shinsegaeinc, name='shinsegaeinc'),
     path('yanolja/', views.Yanolja, name='yanolja'),
     path('line/', views.Line, name='line'),
+    path('daangn/', views.Daangn, name='daangn'),
 ]

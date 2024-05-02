@@ -103,6 +103,13 @@ SITE_CONFIG = {
                 "item_selector": "ul.job_list > li",
                 "title_selector": "h3.title",  # 공고명
                 "period_selector": "span.date"  # 기간
+            },
+        "당근":
+            {
+                "url": "https://about.daangn.com/jobs/software-engineer-backend/#_filter",
+                "item_selector": "ul.c-jpGEAj > div",
+                "title_selector": "h3.c-boyXyq",  # Assuming the job title is within an h3 tag with class 'c-boyXyq'
+                "category_selector": "div.c-kEJcFZ > div.c-kolfYf",   # 계열사
             }
     }
 
@@ -646,13 +653,49 @@ def Line(request):
         items = driver.find_elements(By.CSS_SELECTOR, config['item_selector'])
         # logging.info(f"Found {len(items)} items.")
         for item in items:
-            name = item.find_element(By.CSS_SELECTOR, config['title_selector']).text
+            name = item.find_element(   By.CSS_SELECTOR, config['title_selector']).text
             period = item.find_element(By.CSS_SELECTOR, config['period_selector']).text
             # logging.info(f"Crawled item: {name}, {period}")
             if keywords and any(keyword.lower() in name.lower() for keyword in keywords):
                 crawled_data['data'].append({'name': name, 'period': period})
             else:
                 crawled_data['data'].append({'name': name, 'period': period})
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+    finally:
+        driver.quit()
+    return JsonResponse(crawled_data, safe=False)
+
+# 당근
+def Daangn(request):
+    driver = initialize_driver()
+    config = SITE_CONFIG["당근"]
+    driver.implicitly_wait(5)
+    driver.get(config["url"])
+    driver.implicitly_wait(5)
+
+    # 무한 스크롤
+    perform_infinite_scroll(driver)
+
+    keywords = []
+    crawled_data = {
+        'url': config["url"],
+        'data': []
+    }
+    try:
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, config['item_selector']))
+        )
+        items = driver.find_elements(By.CSS_SELECTOR, config['item_selector'])
+        logging.info(f"Found {len(items)} items.")
+        for item in items:
+            name = item.find_element(By.CSS_SELECTOR, config['title_selector']).text
+            category = item.find_element(By.CSS_SELECTOR, config['category_selector']).text
+            logging.info(f"Crawled item: {name}, {category}")
+            if keywords and any(keyword.lower() in name.lower() for keyword in keywords):
+                crawled_data['data'].append({'name': name, 'period': category})
+            else:
+                crawled_data['data'].append({'name': name, 'period': category})
     except Exception as e:
         print(f"An error occurred: {str(e)}")
     finally:
