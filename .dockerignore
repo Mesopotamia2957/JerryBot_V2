@@ -1,0 +1,12 @@
+.git
+.venv
+.idea
+.omc
+logs
+*.sqlite3
+.env
+.DS_Store
+__pycache__
+*.pyc
+RunJerryBotV2.app
+*.command
