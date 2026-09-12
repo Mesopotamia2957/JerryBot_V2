@@ -19,5 +19,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/", include('Crawling_App.urls')),
+    # 예전 슬랙봇이 쓰던 경로. 새 봇은 /api/ 를 쓴다.
     path("Crawling_App/", include('Crawling_App.urls')),
 ]

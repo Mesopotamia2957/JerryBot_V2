@@ -1,1 +1,12 @@
 .env
+.venv/
+__pycache__/
+*.pyc
+db.sqlite3
+.DS_Store
+.idea/
+logs/
+.omc/
+.write_test
+*.app/
+node_modules/

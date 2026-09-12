@@ -3,19 +3,15 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('company_list/', views.company_list, name='company_list'),
-    path('naver/', views.Naver, name='naver'),
-    path('kakao/', views.Kakao, name='kakao'),
-    path('hl_klemove/', views.Hl_klemove, name='hl_klemove'),
-    path('snow/', views.Snow, name='snow'),
-    path('gcccompany/', views.GccCompany, name='gcccompany'),
-    path('musinsa/', views.Musinsa, name='musinsa'),
-    path('flex/', views.Flex, name='flex'),
-    path('nexon/', views.Nexon, name='nexon'),
-    path('doodlin/', views.Doodlin, name='doodlin'),
-    path('ssg/', views.SSG, name='ssg'),
-    path('shinsegaeinc/', views.Shinsegaeinc, name='shinsegaeinc'),
-    path('yanolja/', views.Yanolja, name='yanolja'),
-    path('line/', views.Line, name='line'),
-    path('daangn/', views.Daangn, name='daangn'),
+    path('companies/', views.company_list, name='company-list'),
+    path('company_list/', views.company_list, name='company-list-legacy'),
+    path('postings/', views.posting_list, name='posting-list'),
+
+    path('subscribers/<str:slack_user_id>/', views.subscriber_detail, name='subscriber-detail'),
+    path('subscribers/<str:slack_user_id>/keywords/', views.subscriber_keywords, name='subscriber-keywords'),
+    path('subscribers/<str:slack_user_id>/matches/', views.subscriber_matches, name='subscriber-matches'),
+
+    # 기업별 조회. 예전 /naver/, /kakao/ 경로와 한글 기업명(/네이버/)을 함께 받는다.
+    # 앞의 경로들을 모두 삼키므로 반드시 마지막에 둘 것.
+    path('<str:code>/', views.company_postings, name='company-postings'),
 ]

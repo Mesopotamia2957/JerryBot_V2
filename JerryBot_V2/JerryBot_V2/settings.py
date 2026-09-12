@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+import dj_database_url
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,13 +21,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-5_k+zi42msq#0ihye21eb@+ei8z++8re0!=huh_xtpy9o03&__'
+# 운영에 올릴 때는 .env 에 SECRET_KEY / DEBUG / ALLOWED_HOSTS 를 반드시 지정한다.
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-only-change-me')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS', default='*').split(',') if host.strip()]
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in config('CSRF_TRUSTED_ORIGINS', default='').split(',') if origin.strip()
+]
 
 
 # Application definition
@@ -76,11 +80,13 @@ WSGI_APPLICATION = 'JerryBot_V2.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+# 로컬 개발은 SQLite, 서버(Docker)는 .env 의 DATABASE_URL 로 Postgres 를 쓴다.
+#   예: DATABASE_URL=postgres://user:pass@postgres:5432/crawler
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.parse(
+        config('DATABASE_URL', default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'),
+        conn_max_age=60,
+    )
 }
 
 
@@ -106,9 +112,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ko-kr'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Seoul'
 
 USE_I18N = True
 
@@ -125,4 +131,39 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SLACK_TOKEN = config('SLACK_TOKEN')
+# 알림 발송용 슬랙 봇 토큰(xoxb-). 없으면 크롤링은 되지만 알림은 나가지 않는다.
+SLACK_TOKEN = config('SLACK_TOKEN', default='')
+
+# 값을 넣으면 API 호출 시 X-API-Key 헤더를 요구한다. 비워두면 인증 없이 열린다.
+JERRYBOT_API_KEY = config('JERRYBOT_API_KEY', default='')
+
+CRAWLER_USER_AGENT = config('CRAWLER_USER_AGENT', default='')
+
+# Docker 처럼 크롬을 고정 경로에 둔 환경용. 비워두면 셀레니움이 알아서 찾는다.
+CHROME_BIN = config('CHROME_BIN', default='')
+CHROMEDRIVER = config('CHROMEDRIVER', default='')
+
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ],
+    'UNICODE_JSON': True,
+}
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {'format': '[{asctime}] {levelname} {name}: {message}', 'style': '{'},
+    },
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'simple'},
+    },
+    'loggers': {
+        'Crawling_App': {
+            'handlers': ['console'],
+            'level': config('LOG_LEVEL', default='INFO'),
+        },
+    },
+}

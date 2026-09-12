@@ -1,0 +1,11 @@
+Django==5.0.3
+djangorestframework==3.15.1
+python-decouple==3.8
+selenium==4.19.0
+slack_sdk==3.27.1
+certifi==2024.2.2
+
+# 서버(Docker) 배포용
+dj-database-url==2.1.0
+psycopg[binary]==3.1.18
+gunicorn==22.0.0
