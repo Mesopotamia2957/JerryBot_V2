@@ -11,6 +11,7 @@ cron 예시 (매일 오전 9시, 오후 6시):
 from django.core.management.base import BaseCommand
 
 from Crawling_App import notifications, services
+from Crawling_App.models import Company
 from Crawling_App.sites import ENABLED_SITES, get_spec
 
 
@@ -29,7 +30,14 @@ class Command(BaseCommand):
         services.sync_companies()
 
         # 기업을 직접 지정하면 중단된 곳도 돌려본다(복구 확인용).
-        codes = options['company'] or [spec.code for spec in ENABLED_SITES]
+        # 지정하지 않은 전체 실행에서는 관리자가 일시 중지한 기업(Company.paused)을 뺀다.
+        if options['company']:
+            codes = options['company']
+        else:
+            paused = set(Company.objects.filter(paused=True).values_list('code', flat=True))
+            codes = [spec.code for spec in ENABLED_SITES if spec.code not in paused]
+            if paused:
+                self.stdout.write(self.style.WARNING(f'- 일시 중지로 제외: {", ".join(sorted(paused))}'))
         total_new = 0
 
         for spec in (get_spec(code) for code in codes):

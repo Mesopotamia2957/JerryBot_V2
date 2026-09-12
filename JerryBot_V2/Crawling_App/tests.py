@@ -422,3 +422,75 @@ class ApiTests(TestCase):
 
     def test_legacy_path_still_works(self):
         self.assertEqual(self.client.get('/Crawling_App/naver/').status_code, 200)
+
+
+class AdminOpsTests(TestCase):
+    """관리자 화면의 운영 동작: 일시 중지, 즉시 크롤링, 포털 상태."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        self.admin = get_user_model().objects.create_superuser('admin', 'a@b.c', 'pw')
+        self.client.force_login(self.admin)
+
+    def _fake_result(self, code):
+        company, _ = Company.objects.get_or_create(code=code, defaults={'name': code, 'career_url': 'https://ex.com'})
+        return {'company': company, 'ok': True, 'error': '', 'total': 0, 'new': [], 'closed': 0}
+
+    def test_crawl_jobs_skips_paused_companies(self):
+        from django.core.management import call_command
+        services.sync_companies()
+        Company.objects.filter(code='naver').update(paused=True)
+        with patch('Crawling_App.services.crawl_company', side_effect=self._fake_result) as crawl:
+            call_command('crawl_jobs', verbosity=0)
+        crawled = {call.args[0] for call in crawl.call_args_list}
+        self.assertNotIn('naver', crawled)
+        self.assertIn('kakao', crawled)
+
+    def test_explicit_company_ignores_pause(self):
+        from django.core.management import call_command
+        services.sync_companies()
+        Company.objects.filter(code='naver').update(paused=True)
+        with patch('Crawling_App.services.crawl_company', side_effect=self._fake_result) as crawl:
+            call_command('crawl_jobs', company=['naver'], verbosity=0)
+        self.assertEqual([c.args[0] for c in crawl.call_args_list], ['naver'])
+
+    def test_sync_companies_keeps_pause(self):
+        services.sync_companies()
+        Company.objects.filter(code='naver').update(paused=True)
+        services.sync_companies()
+        self.assertTrue(Company.objects.get(code='naver').paused)
+
+    def test_crawl_now_action_spawns_background_process(self):
+        services.sync_companies()
+        ids = list(Company.objects.filter(code__in=['naver', 'kakao']).values_list('pk', flat=True))
+        with patch('Crawling_App.admin.subprocess.Popen') as popen:
+            response = self.client.post('/admin/Crawling_App/company/',
+                                        {'action': 'crawl_now', '_selected_action': ids}, follow=True)
+        self.assertEqual(response.status_code, 200)
+        popen.assert_called_once()
+        cmd = popen.call_args.args[0]
+        self.assertIn('crawl_jobs', cmd)
+        self.assertIn('--notify', cmd)
+        self.assertEqual(cmd.count('-c'), 2)
+
+    def test_portal_status_requires_staff(self):
+        self.client.logout()
+        response = self.client.get('/admin/status.json')
+        self.assertEqual(response.status_code, 302)
+
+    def test_portal_status_summarises(self):
+        company = Company.objects.create(code='naver', name='네이버', career_url='https://ex.com')
+        services.store_postings(company, [row('백엔드 개발자', 'https://ex.com/1')])
+        subscriber, _ = services.get_or_create_subscriber('U1')
+        services.add_keywords(subscriber, ['백엔드'])
+        data = self.client.get('/admin/status.json').json()
+        self.assertEqual(data['totals']['open_postings'], 1)
+        self.assertEqual(data['companies'][0]['open_count'], 1)
+        self.assertEqual(data['subscribers'][0]['keywords'], ['백엔드'])
+
+    def test_admin_changelists_render(self):
+        services.sync_companies()
+        for path in ['/admin/', '/admin/Crawling_App/company/', '/admin/Crawling_App/jobposting/',
+                     '/admin/Crawling_App/subscriber/', '/admin/Crawling_App/keyword/',
+                     '/admin/Crawling_App/notification/']:
+            self.assertEqual(self.client.get(path).status_code, 200, path)

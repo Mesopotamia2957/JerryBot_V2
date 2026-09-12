@@ -17,7 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from Crawling_App import views
+
 urlpatterns = [
+    path("admin/status.json", views.portal_status, name="portal-status"),  # admin/ 보다 먼저
     path("admin/", admin.site.urls),
     path("api/", include('Crawling_App.urls')),
     # 예전 슬랙봇이 쓰던 경로. 새 봇은 /api/ 를 쓴다.

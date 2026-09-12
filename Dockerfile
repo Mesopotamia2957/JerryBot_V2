@@ -26,6 +26,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY JerryBot_V2/ ./
+RUN python manage.py collectstatic --noinput
 COPY docker/crontab /etc/crontab.jerrybot
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

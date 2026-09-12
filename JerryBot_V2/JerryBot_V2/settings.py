@@ -48,6 +48,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # 관리자 화면 정적 파일을 gunicorn 이 직접 서빙
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -125,6 +126,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'   # collectstatic 결과. Docker 빌드 때 생성
+STORAGES = {
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+}
+
+# Caddy(리버스 프록시) 뒤에서 HTTPS 로 접속했음을 인식한다 (CSRF/리다이렉트 판단용)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

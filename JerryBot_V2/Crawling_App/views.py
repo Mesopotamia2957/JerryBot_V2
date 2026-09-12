@@ -7,13 +7,15 @@
 from functools import wraps
 
 from django.conf import settings
+from django.contrib.admin.views.decorators import staff_member_required
+from django.http import JsonResponse
 from django.db.models import Count, Q
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from . import services
-from .models import Company, JobPosting
+from .models import Company, JobPosting, Keyword, Notification, Subscriber
 from .serializers import CompanySerializer, JobPostingSerializer, SubscriberSerializer
 from .sites import SITES, get_spec
 
@@ -166,4 +168,36 @@ def subscriber_matches(request, slack_user_id):
         'keywords': keywords,
         'count': queryset.count(),
         'results': JobPostingSerializer(queryset[:_parse_limit(request)], many=True).data,
+    })
+
+
+# ---------------------------------------------------------------------------
+# 관리자 포털용 상태 요약 (/admin/status.json, 관리자 로그인 필요)
+# ---------------------------------------------------------------------------
+
+@staff_member_required
+def portal_status(request):
+    companies = (Company.objects
+                 .annotate(open_count=Count('postings', filter=Q(postings__is_open=True)))
+                 .order_by('name'))
+    subscribers = Subscriber.objects.prefetch_related('keywords').order_by('slack_user_id')
+    last_notification = Notification.objects.order_by('-sent_at').values_list('sent_at', flat=True).first()
+    return JsonResponse({
+        'companies': [{
+            'code': c.code, 'name': c.name, 'url': c.career_url,
+            'is_active': c.is_active, 'paused': c.paused, 'open_count': c.open_count,
+            'last_crawled_at': c.last_crawled_at, 'last_crawl_ok': c.last_crawl_ok,
+            'last_crawl_error': (c.last_crawl_error or '')[:120],
+        } for c in companies],
+        'subscribers': [{
+            'slack_user_id': s.slack_user_id, 'display_name': s.display_name,
+            'notify_enabled': s.notify_enabled, 'keywords': s.keyword_list(),
+        } for s in subscribers],
+        'totals': {
+            'open_postings': JobPosting.objects.filter(is_open=True).count(),
+            'all_postings': JobPosting.objects.count(),
+            'keywords': Keyword.objects.count(),
+            'notifications': Notification.objects.count(),
+        },
+        'last_notification_at': last_notification,
     })

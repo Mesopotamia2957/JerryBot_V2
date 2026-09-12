@@ -11,6 +11,9 @@ class Company(models.Model):
     name = models.CharField(max_length=100)
     career_url = models.URLField()
     is_active = models.BooleanField(default=True)
+    # 관리자 화면에서 끄는 스위치. is_active 는 코드(sites.py)의 상태를 비추고, paused 는 사람이 정한다.
+    paused = models.BooleanField(default=False, verbose_name='일시 중지',
+                                 help_text='켜면 배치 크롤링에서 제외한다. 기존 공고는 유지된다.')
     last_crawled_at = models.DateTimeField(null=True, blank=True)
     last_crawl_ok = models.BooleanField(default=True)
     last_crawl_error = models.TextField(blank=True, default='')
