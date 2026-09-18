@@ -86,10 +86,13 @@ body { letter-spacing: -0.01em; }
   border-bottom: 1px solid var(--jerry-sep);
   box-shadow: none;
 }
-#branding h1, #branding h1 a:link, #branding h1 a:visited {
+#branding h1, #branding h1 a:link, #branding h1 a:visited,
+#site-name, #site-name a:link, #site-name a:visited {
   color: var(--jerry-ink);
   font-weight: 600;
+  font-size: 18px;
   letter-spacing: -0.02em;
+  text-decoration: none;
 }
 /* 테마 토글은 dark_mode.css 와 theme.js 를 걷어내서 동작하지 않는다 */
 .theme-toggle { display: none !important; }
@@ -213,8 +216,59 @@ body.login #container {
   box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 12px 40px rgba(0, 0, 0, .08);
   overflow: hidden;
 }
-body.login #header { border-bottom: 1px solid var(--jerry-sep); }
-body.login .submit-row { box-shadow: none; padding: 0; }
+body.login #header { border-bottom: 1px solid var(--jerry-sep); padding: 18px 24px; }
+body.login #content { padding: 20px 24px 24px; }
+body.login .submit-row { box-shadow: none; padding: 0; background: transparent; }
+body.login .submit-row input[type=submit] { width: 100%; }
 
 /* ── 메시지 ────────────────────────────────────────────────── */
 ul.messagelist li { border-radius: 12px; font-size: 13px; }
+
+/* ── 좌측 모델 사이드바 ────────────────────────────────────── */
+#nav-sidebar {
+  background: var(--jerry-bg);
+  border-right: 1px solid var(--jerry-sep);
+}
+#nav-sidebar .module {
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+#nav-sidebar .module th, #nav-sidebar .module td { border-bottom: none; }
+#nav-sidebar .current-model { background: var(--jerry-blue-tint); }
+#nav-sidebar .current-model a { color: var(--jerry-blue); font-weight: 600; }
+#nav-filter {
+  border: 1px solid var(--jerry-sep);
+  border-radius: 10px;
+  margin: 8px 12px;
+  width: calc(100% - 24px);
+  background: var(--jerry-card);
+}
+.toggle-nav-sidebar { border-right: 1px solid var(--jerry-sep); background: var(--jerry-bg); }
+
+/* ── 목록 테이블 ───────────────────────────────────────────── */
+#changelist .results {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px rgba(0, 0, 0, .045);
+  background: var(--jerry-card);
+}
+#changelist table { border: none; }
+#changelist table thead th {
+  border-bottom: 1px solid var(--jerry-sep);
+  font-weight: 600;
+  color: var(--jerry-sub);
+}
+#changelist table thead th a { color: var(--jerry-sub); }
+#changelist-form .results + .paginator { border-radius: 0 0 18px 18px; }
+
+/* ── 변경 화면 ─────────────────────────────────────────────── */
+.change-form .module { margin-bottom: 12px; }
+fieldset.module .form-row { border-bottom: 1px solid var(--jerry-sep); padding: 10px 20px; }
+fieldset.module .form-row:last-child { border-bottom: none; }
+.aligned label { color: var(--jerry-sub); font-weight: 500; }
+.help, .form-row div.help { color: var(--jerry-sub); font-size: 12px; }
+.submit-row a.deletelink { border-radius: 999px; }
+
+/* 상단 고정 영역이 헤더와 이어지도록 */
+.sticky { background: var(--jerry-bg); }
