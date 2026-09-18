@@ -127,6 +127,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'   # collectstatic 결과. Docker 빌드 때 생성
+STATICFILES_DIRS = [BASE_DIR / 'static']  # admin-theme.css (서비스 공통 디자인)
 STORAGES = {
     'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
 }

@@ -1,12 +1,16 @@
 {% extends "admin/base.html" %}
-{% load i18n %}
-{# Django admin 상단에 서비스 공통 메뉴를 얹는다. settings.TEMPLATES DIRS('templates/')가 이 파일을 먼저 찾는다. #}
+{% load i18n static %}
+{# Django admin 을 다른 서비스 화면과 같은 결로 맞춘다. settings.TEMPLATES DIRS('templates/')가 이 파일을 먼저 찾는다. #}
 
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | JerryBot 관리{% endblock %}
 
 {% block branding %}
 <div id="site-name"><a href="{% url 'admin:index' %}">JerryBot 관리</a></div>
 {% endblock %}
+
+{# 다른 화면이 전부 라이트 하나뿐이라 admin 만 OS 설정을 따라 어두워지면 결이 깨진다.
+   이 블록을 비우면 dark_mode.css 와 theme.js 가 아예 안 실린다. #}
+{% block dark-mode-vars %}{% endblock %}
 
 {% block nav-global %}
 <nav class="jerry-nav" aria-label="서비스 메뉴">
@@ -19,10 +23,5 @@
 {% endblock %}
 
 {% block extrastyle %}{{ block.super }}
-<style>
-  .jerry-nav { display: inline-flex; gap: 4px; margin-left: 16px; vertical-align: middle; flex-wrap: wrap; }
-  .jerry-nav a { color: var(--header-link-color, #fff); opacity: .75; padding: 3px 10px; border-radius: 999px; font-size: 12px; text-decoration: none; }
-  .jerry-nav a.active, .jerry-nav a:hover { opacity: 1; background: rgba(255,255,255,.18); }
-  @media (max-width: 767px) { .jerry-nav { margin-left: 0; margin-top: 6px; } }
-</style>
+<link rel="stylesheet" href="{% static 'admin-theme.css' %}">
 {% endblock %}

@@ -1,0 +1,220 @@
+/*
+  Django admin 을 다른 서비스 화면(포털·자금관리·볼트·데이터 관리)과 같은 결로 맞춘다.
+  색은 전부 CSS 변수로 갈아끼우고, 모양(둥근 모서리·그림자·알약 버튼)만 조금 손본다.
+
+  base_site.html 에서 dark-mode-vars 블록을 비워 dark_mode.css 와 theme.js 를 걷어냈다.
+  다른 화면이 전부 라이트 하나뿐이라 admin 만 OS 설정을 따라 어두워지면 결이 깨진다.
+*/
+
+:root {
+  /* 포털과 같은 토큰 */
+  --jerry-bg: #F5F5F7;
+  --jerry-card: #FFFFFF;
+  --jerry-ink: #1D1D1F;
+  --jerry-sub: #86868B;
+  --jerry-sep: #E8E8ED;
+  --jerry-fill: #F2F2F5;
+  --jerry-blue: #0071E3;
+  --jerry-blue-dark: #0058B8;
+  --jerry-blue-tint: #EAF3FE;
+  --jerry-red: #D70015;
+  --jerry-green-tint: #E9F6EE;
+  --jerry-warn-tint: #FDF3DF;
+  --jerry-red-tint: #FDEFE9;
+
+  /* ── Django admin 변수 덮어쓰기 ───────────────────────────── */
+  --primary: var(--jerry-blue);
+  --secondary: var(--jerry-card);
+  --accent: var(--jerry-blue);
+  --primary-fg: #FFFFFF;
+
+  --body-fg: var(--jerry-ink);
+  --body-bg: var(--jerry-bg);
+  --body-quiet-color: var(--jerry-sub);
+  --body-loud-color: var(--jerry-ink);
+
+  --header-color: var(--jerry-ink);
+  --header-branding-color: var(--jerry-ink);
+  --header-bg: var(--jerry-card);
+  --header-link-color: var(--jerry-ink);
+
+  --breadcrumbs-fg: var(--jerry-sub);
+  --breadcrumbs-link-fg: var(--jerry-blue);
+  --breadcrumbs-bg: var(--jerry-bg);
+
+  --link-fg: var(--jerry-blue);
+  --link-hover-color: var(--jerry-blue-dark);
+  --link-selected-fg: var(--jerry-blue);
+
+  --hairline-color: var(--jerry-sep);
+  --border-color: var(--jerry-sep);
+
+  --error-fg: var(--jerry-red);
+  --message-success-bg: var(--jerry-green-tint);
+  --message-warning-bg: var(--jerry-warn-tint);
+  --message-error-bg: var(--jerry-red-tint);
+
+  --darkened-bg: var(--jerry-fill);
+  --selected-bg: var(--jerry-blue-tint);
+  --selected-row: var(--jerry-warn-tint);
+
+  --button-fg: #FFFFFF;
+  --button-bg: var(--jerry-blue);
+  --button-hover-bg: var(--jerry-blue-dark);
+  --default-button-bg: var(--jerry-blue);
+  --default-button-hover-bg: var(--jerry-blue-dark);
+  --close-button-bg: var(--jerry-sub);
+  --close-button-hover-bg: #6E6E73;
+  --delete-button-bg: var(--jerry-red);
+  --delete-button-hover-bg: #B3000F;
+
+  --object-tools-fg: #FFFFFF;
+  --object-tools-bg: var(--jerry-ink);
+  --object-tools-hover-bg: #3A3A3C;
+
+  --font-family-primary: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+
+  color-scheme: light;
+}
+
+body { letter-spacing: -0.01em; }
+
+/* ── 상단 헤더 ─────────────────────────────────────────────── */
+#header {
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--jerry-sep);
+  box-shadow: none;
+}
+#branding h1, #branding h1 a:link, #branding h1 a:visited {
+  color: var(--jerry-ink);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+/* 테마 토글은 dark_mode.css 와 theme.js 를 걷어내서 동작하지 않는다 */
+.theme-toggle { display: none !important; }
+
+/* 서비스 공통 메뉴. 다른 화면과 같은 알약 모양으로 */
+.jerry-nav {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 16px;
+  padding: 4px;
+  vertical-align: middle;
+  background: #E3E3E8;
+  border-radius: 999px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.jerry-nav a {
+  flex: 0 0 auto;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--jerry-sub);
+  text-decoration: none;
+  white-space: nowrap;
+  opacity: 1;
+}
+.jerry-nav a.active {
+  background: var(--jerry-card);
+  color: var(--jerry-ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+}
+.jerry-nav a:hover { color: var(--jerry-ink); background: rgba(255, 255, 255, .6); }
+@media (max-width: 767px) { .jerry-nav { margin-left: 0; margin-top: 8px; } }
+
+/* ── 빵부스러기 ────────────────────────────────────────────── */
+div.breadcrumbs {
+  padding: 10px 24px;
+  border-bottom: none;
+  font-size: 12px;
+  color: var(--jerry-sub);
+}
+
+/* ── 카드(모듈) ────────────────────────────────────────────── */
+.module, .inline-group, .dashboard #content-related .module {
+  border-radius: 18px;
+  border: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px rgba(0, 0, 0, .045);
+  overflow: hidden;
+  background: var(--jerry-card);
+}
+.module h2, .module caption, .inline-group h2 {
+  background: var(--jerry-card);
+  color: var(--jerry-ink);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid var(--jerry-sep);
+  text-transform: none;
+}
+.module table th, .module table td { border-bottom: 1px solid var(--jerry-sep); }
+#content { padding: 20px 24px 40px; }
+
+/* ── 버튼 ──────────────────────────────────────────────────── */
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-weight: 600;
+  font-size: 13px;
+  border: none;
+  box-shadow: none;
+}
+.submit-row {
+  border-radius: 18px;
+  border: none;
+  background: var(--jerry-card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px rgba(0, 0, 0, .045);
+  padding: 14px 20px;
+}
+.object-tools a, .object-tools a:link, .object-tools a:visited {
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ── 입력 ──────────────────────────────────────────────────── */
+input[type=text], input[type=password], input[type=email], input[type=url],
+input[type=number], input[type=tel], textarea, select, .vTextField {
+  border: 1px solid var(--jerry-sep);
+  border-radius: 10px;
+  padding: 7px 10px;
+  background: var(--jerry-card);
+  color: var(--jerry-ink);
+}
+input:focus, textarea:focus, select:focus, .vTextField:focus {
+  outline: none;
+  border-color: var(--jerry-blue);
+}
+
+/* ── 목록 ──────────────────────────────────────────────────── */
+#changelist .actions {
+  background: var(--jerry-fill);
+  border: none;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  color: var(--jerry-sub);
+}
+#changelist-filter { border-radius: 18px; background: var(--jerry-card); }
+#changelist-filter h2 { border-radius: 18px 18px 0 0; }
+#changelist table thead th { background: var(--jerry-card); }
+tr:hover > td, tr:hover > th { background: var(--jerry-fill); }
+.paginator { border-top: 1px solid var(--jerry-sep); background: var(--jerry-card); }
+
+/* ── 로그인 ────────────────────────────────────────────────── */
+body.login #container {
+  border-radius: 18px;
+  border: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 12px 40px rgba(0, 0, 0, .08);
+  overflow: hidden;
+}
+body.login #header { border-bottom: 1px solid var(--jerry-sep); }
+body.login .submit-row { box-shadow: none; padding: 0; }
+
+/* ── 메시지 ────────────────────────────────────────────────── */
+ul.messagelist li { border-radius: 12px; font-size: 13px; }
