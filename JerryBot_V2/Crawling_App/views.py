@@ -14,8 +14,8 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from . import services
-from .models import Company, JobPosting, Keyword, Notification, Subscriber
+from . import services, webauth
+from .models import Company, CrawlRequest, JobPosting, Keyword, Notification, Subscriber
 from .serializers import CompanySerializer, JobPostingSerializer, SubscriberSerializer
 from .sites import SITES, get_spec
 
@@ -201,3 +201,142 @@ def portal_status(request):
         },
         'last_notification_at': last_notification,
     })
+
+
+# ---------------------------------------------------------------------------
+# 웹 사용자용 — 자금관리(finance-api)의 슬랙 로그인 세션을 그대로 읽는다.
+#
+# 위쪽 뷰들은 X-API-Key(슬랙봇 전용)로 지키지만, 이 아래는 사람이 브라우저로 직접 쓰는
+# 화면이라 방식이 다르다. require_web_login 이 finance_session 쿠키에서 슬랙 사용자 ID 를
+# 꺼내고, 그 사람의 Subscriber 를 찾아(없으면 새로 만들어) 뷰에 넘긴다.
+# ---------------------------------------------------------------------------
+
+def require_web_login(view):
+    """finance_session 쿠키로 로그인 여부를 확인하고, Subscriber 를 view 에 넘긴다.
+
+    로그인 안 됐으면 401 + loginUrl 을 준다. 프론트가 이 loginUrl 로 보내면 되므로
+    "크롤링" 탭도 자금관리와 똑같은 슬랙 로그인 화면을 그대로 쓸 수 있다.
+    """
+
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        slack_user_id = webauth.current_slack_user_id(request)
+        if not slack_user_id:
+            return Response(
+                {"detail": "로그인이 필요합니다", "loginUrl": "/api/auth/login"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        subscriber, _ = services.get_or_create_subscriber(slack_user_id)
+        return view(request, subscriber, *args, **kwargs)
+
+    return wrapper
+
+
+def _crawl_request_row(r):
+    return {
+        "id": r.id,
+        "companyName": r.company_name,
+        "url": r.url,
+        "note": r.note,
+        "status": r.status,
+        "statusLabel": r.get_status_display(),
+        "adminNote": r.admin_note,
+        "createdAt": r.created_at.isoformat(),
+        "updatedAt": r.updated_at.isoformat(),
+    }
+
+
+@api_view(["GET"])
+@require_web_login
+def web_me(request, subscriber):
+    """로그인한 사람 정보. 프론트가 화면을 그리기 전에 한 번 부른다."""
+    return Response({
+        "slackUserId": subscriber.slack_user_id,
+        "displayName": subscriber.display_name,
+        "notifyEnabled": subscriber.notify_enabled,
+        "keywords": subscriber.keyword_list(),
+        "isAdmin": webauth.current_is_admin(request),
+    })
+
+
+@api_view(["GET", "POST", "DELETE"])
+@require_web_login
+def web_keywords(request, subscriber):
+    """내 키워드 조회(GET)·추가(POST)·삭제(DELETE). 본문: {"keywords": ["백엔드", "django"]}"""
+    if request.method == "GET":
+        return Response({"keywords": subscriber.keyword_list()})
+
+    keywords = request.data.get("keywords") or []
+    if isinstance(keywords, str):
+        keywords = [keywords]
+    if not keywords:
+        return Response({"detail": "keywords 가 비어 있습니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == "POST":
+        added, existing = services.add_keywords(subscriber, keywords)
+        return Response({"added": added, "already": existing, "keywords": subscriber.keyword_list()})
+
+    removed = services.remove_keywords(subscriber, keywords)
+    return Response({"removed": removed, "keywords": subscriber.keyword_list()})
+
+
+@api_view(["POST"])
+@require_web_login
+def web_notify_toggle(request, subscriber):
+    """DM 알림 on/off. 본문: {"enabled": true}"""
+    enabled = bool(request.data.get("enabled", True))
+    subscriber.notify_enabled = enabled
+    subscriber.save(update_fields=["notify_enabled"])
+    return Response({"notifyEnabled": subscriber.notify_enabled})
+
+
+@api_view(["GET"])
+@require_web_login
+def web_postings(request, subscriber):
+    """공고 피드. 일자별로 묶어서 준다.
+
+    ?mine=1        내 키워드에 맞는 것만 (기본은 전체)
+    ?company=코드   특정 기업만
+    ?days=14       최근 며칠치 (기본 14, 최대 60)
+    """
+    try:
+        days = max(1, min(int(request.query_params.get("days", 14)), 60))
+    except (TypeError, ValueError):
+        days = 14
+    company_code = request.query_params.get("company") or None
+    keywords = subscriber.keyword_list() if request.query_params.get("mine") == "1" else None
+    if request.query_params.get("mine") == "1" and not keywords:
+        return Response({"days": [], "notice": "등록된 키워드가 없습니다."})
+
+    grouped = services.postings_by_date(company_code=company_code, keywords=keywords, days=days)
+    return Response({
+        "days": [
+            {"date": day, "items": JobPostingSerializer(items, many=True).data}
+            for day, items in grouped.items()
+        ],
+    })
+
+
+@api_view(["GET", "POST"])
+@require_web_login
+def web_crawl_requests(request, subscriber):
+    """크롤링 추가 요청 게시판.
+
+    GET  은 내 요청 목록(관리자는 전체).
+    POST 는 새 요청. 본문: {"companyName": "...", "url": "https://...", "note": "..."}
+    상태 변경(승인/반려 등)은 여기서 하지 않는다 — Django 관리자 화면(/admin/)에서
+    jerry 만 처리한다. 처리 결과는 이 목록의 status 로 다시 보인다.
+    """
+    if request.method == "GET":
+        mine_only = not webauth.current_is_admin(request)
+        rows = services.list_crawl_requests(subscriber if mine_only else None)
+        return Response({"items": [_crawl_request_row(r) for r in rows]})
+
+    company_name = request.data.get("companyName", "")
+    url = request.data.get("url", "")
+    note = request.data.get("note", "")
+    try:
+        req = services.create_crawl_request(subscriber, company_name, url, note)
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(_crawl_request_row(req), status=status.HTTP_201_CREATED)

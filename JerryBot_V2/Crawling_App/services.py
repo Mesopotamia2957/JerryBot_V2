@@ -9,7 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .crawler import CrawlError, crawl
-from .models import Company, JobPosting, Keyword, Subscriber
+from .models import Company, CrawlRequest, JobPosting, Keyword, Subscriber
 from .sites import SITES, get_spec
 
 logger = logging.getLogger(__name__)
@@ -122,6 +122,25 @@ def list_postings(company_code=None, keywords=None, only_open=True, limit=None):
 # 구독
 # ---------------------------------------------------------------------------
 
+def postings_by_date(company_code=None, keywords=None, only_open=True, days=14):
+    """최근 공고를 first_seen_at 날짜별로 묶어 돌려준다.
+
+    '일자별 구분' 화면에 쓴다. days 는 오늘부터 며칠 전까지 볼지다.
+    같은 날짜 안에서는 최신순으로 정렬한다.
+    """
+    from collections import OrderedDict
+
+    cutoff = timezone.now() - timezone.timedelta(days=days)
+    queryset = list_postings(company_code=company_code, keywords=keywords, only_open=only_open)
+    queryset = queryset.filter(first_seen_at__gte=cutoff).order_by('-first_seen_at')
+
+    grouped: 'OrderedDict[str, list]' = OrderedDict()
+    for posting in queryset:
+        key = timezone.localtime(posting.first_seen_at).strftime('%Y-%m-%d')
+        grouped.setdefault(key, []).append(posting)
+    return grouped
+
+
 def get_or_create_subscriber(slack_user_id, channel_id='', display_name=''):
     subscriber, created = Subscriber.objects.get_or_create(slack_user_id=slack_user_id)
     changed = False
@@ -155,3 +174,28 @@ def remove_keywords(subscriber, texts):
     removed = list(subscriber.keywords.filter(text__in=wanted).values_list('text', flat=True))
     subscriber.keywords.filter(text__in=wanted).delete()
     return removed
+
+
+# ---------------------------------------------------------------------------
+# 크롤링 추가 요청 게시판
+# ---------------------------------------------------------------------------
+
+def create_crawl_request(subscriber, company_name, url, note=''):
+    """새 크롤링 요청을 만든다. url 은 모델에서 이미 필수라 여기서는 공백만 확인한다."""
+    company_name = (company_name or '').strip()
+    url = (url or '').strip()
+    if not company_name:
+        raise ValueError('company_name 이 비어 있습니다')
+    if not url:
+        raise ValueError('url 이 비어 있습니다')
+    return CrawlRequest.objects.create(
+        requester=subscriber, company_name=company_name, url=url, note=(note or '').strip(),
+    )
+
+
+def list_crawl_requests(subscriber=None):
+    """요청 목록. subscriber 를 주면 그 사람 것만(내 요청 보기), 안 주면 전체(관리자용)."""
+    queryset = CrawlRequest.objects.select_related('requester')
+    if subscriber is not None:
+        queryset = queryset.filter(requester=subscriber)
+    return queryset

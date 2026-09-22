@@ -13,7 +13,7 @@ from django.contrib import admin, messages
 from django.db.models import Count, Q
 from django.utils.html import format_html
 
-from .models import Company, JobPosting, Keyword, Notification, Subscriber
+from .models import Company, CrawlRequest, JobPosting, Keyword, Notification, Subscriber
 from .sites import get_spec
 
 admin.site.site_header = 'JerryBot 관리'
@@ -170,3 +170,56 @@ class NotificationAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False  # 발송 기록은 배치가 남긴다
+
+
+def _notify_requester(crawl_request, message):
+    """요청 처리 결과를 요청자에게 DM 한다. 실패해도 관리자 작업은 막지 않는다."""
+    try:
+        from . import notifications
+        client = notifications._client()
+        channel = crawl_request.requester.slack_channel_id or crawl_request.requester.slack_user_id
+        client.chat_postMessage(channel=channel, text=message, unfurl_links=False)
+    except Exception:
+        pass
+
+
+@admin.register(CrawlRequest)
+class CrawlRequestAdmin(admin.ModelAdmin):
+    """크롤링 추가 요청 게시판. 사람은 /api/jobs/requests/ 로 올리고, 처리는 여기서 한다."""
+
+    list_display = ['company_name', 'url_link', 'requester', 'status', 'created_at']
+    list_filter = ['status']
+    search_fields = ['company_name', 'url', 'requester__slack_user_id', 'requester__display_name']
+    date_hierarchy = 'created_at'
+    ordering = ['-created_at']
+    readonly_fields = ['requester', 'company_name', 'url', 'note', 'created_at', 'updated_at']
+    fields = ['requester', 'company_name', 'url', 'note', 'status', 'admin_note', 'created_at', 'updated_at']
+    actions = ['mark_in_progress', 'mark_done', 'mark_rejected']
+
+    def has_add_permission(self, request):
+        return False  # 요청은 사용자가 웹 화면에서 만든다
+
+    @admin.display(description='채용 페이지')
+    def url_link(self, obj):
+        return format_html('<a href="{}" target="_blank" rel="noopener">열기</a>', obj.url)
+
+    @admin.action(description='진행 중으로 변경')
+    def mark_in_progress(self, request, queryset):
+        n = queryset.update(status='in_progress')
+        self.message_user(request, f'{n}건을 진행 중으로 바꿨습니다.')
+
+    @admin.action(description='완료 처리 (+요청자에게 DM)')
+    def mark_done(self, request, queryset):
+        for req in queryset:
+            _notify_requester(req, f'요청하신 "{req.company_name}" 크롤링 추가가 완료됐어요. '
+                                    f'!키워드추가 로 키워드를 등록해 두면 새 공고가 올라올 때 알려드려요.')
+        n = queryset.update(status='done')
+        self.message_user(request, f'{n}건을 완료 처리했습니다.')
+
+    @admin.action(description='반려 처리 (+요청자에게 DM)')
+    def mark_rejected(self, request, queryset):
+        for req in queryset:
+            _notify_requester(req, f'요청하신 "{req.company_name}" 크롤링 추가가 반려됐어요. '
+                                    f'사유는 관리자에게 문의해 주세요.')
+        n = queryset.update(status='rejected')
+        self.message_user(request, f'{n}건을 반려 처리했습니다.')

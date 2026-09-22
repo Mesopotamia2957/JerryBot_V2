@@ -125,6 +125,36 @@ class Keyword(models.Model):
         super().save(*args, **kwargs)
 
 
+class CrawlRequest(models.Model):
+    """"이 회사도 크롤링해줘" 요청 게시판.
+
+    누구나(로그인한 구독자) 새 기업·페이지를 요청할 수 있고, 관리자가 상태를 바꾸며 처리한다.
+    url 을 필수로 받는 이유는 없으면 관리자가 sites.py 에 SiteSpec 을 만들 때 매번 되물어야 하기 때문이다.
+    """
+
+    STATUS_CHOICES = [
+        ('pending', '대기'),
+        ('in_progress', '진행 중'),
+        ('done', '완료'),
+        ('rejected', '반려'),
+    ]
+
+    requester = models.ForeignKey(Subscriber, on_delete=models.CASCADE, related_name='crawl_requests')
+    company_name = models.CharField(max_length=100, verbose_name='기업/사이트 이름')
+    url = models.URLField(max_length=1000, verbose_name='채용공고 페이지 주소')
+    note = models.TextField(blank=True, default='', verbose_name='요청 메모')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_note = models.TextField(blank=True, default='', verbose_name='관리자 답변')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'[{self.get_status_display()}] {self.company_name} ({self.requester})'
+
+
 class Notification(models.Model):
     """이미 보낸 공고를 기록해 같은 공고를 두 번 알리지 않도록 한다."""
 

@@ -149,6 +149,11 @@ JERRYBOT_API_KEY = config('JERRYBOT_API_KEY', default='')
 
 CRAWLER_USER_AGENT = config('CRAWLER_USER_AGENT', default='')
 
+# 자금관리(finance-api)의 슬랙 로그인 세션 쿠키를 검증하는 비밀키. finance-api 의
+# SESSION_SECRET 과 반드시 같은 값이어야 한다(docker-compose.yml 에서 같은 env 를 공유).
+# 비워두면 Crawling_App/webauth.py 가 무조건 "로그인 안 됨"으로 처리한다(폴백 없음).
+SESSION_SECRET = config('SESSION_SECRET', default='')
+
 # Docker 처럼 크롬을 고정 경로에 둔 환경용. 비워두면 셀레니움이 알아서 찾는다.
 CHROME_BIN = config('CHROME_BIN', default='')
 CHROMEDRIVER = config('CHROMEDRIVER', default='')
