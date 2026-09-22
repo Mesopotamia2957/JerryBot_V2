@@ -14,6 +14,16 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 @dataclass(frozen=True)
 class SiteSpec:
+    """사이트 한 곳을 어떻게 긁을지 적어 둔 명세.
+
+    crawler.py 는 이 값만 보고 움직인다. 그래서 기업을 추가할 때 엔진 코드는 건드리지 않고
+    아래 SITES 리스트에 SiteSpec 한 줄만 넣으면 된다.
+
+    필드가 많은 이유는 사이트마다 HTML 구조가 제각각이기 때문이다. 대부분은 기본값으로 두고,
+    그 사이트에서만 특이한 것들(링크를 못 뽑는다, 필터를 눌러야 한다, 무한스크롤이 아니다 …)만
+    지정하면 된다. frozen=True 라 한 번 만들면 못 고친다 — 정의가 런타임에 바뀌는 일이 없게.
+    """
+
     code: str                      # API 경로 / 슬랙 명령어에 쓰이는 식별자
     name: str                      # 사람이 읽는 기업명
     url: str
@@ -70,10 +80,20 @@ class SiteSpec:
 # ---------------------------------------------------------------------------
 
 def _click(driver, by, selector, timeout=10):
+    """요소가 클릭 가능해질 때까지 기다렸다가 누른다.
+
+    바로 click() 하면 아직 안 그려졌거나 다른 요소에 가려 있어서 실패하는 일이 잦다.
+    prepare 훅들이 공통으로 쓴다.
+    """
     WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((by, selector))).click()
 
 
 def prepare_kakao(driver):
+    """카카오: 공고 목록을 긁기 전에 회사 선택을 '전체'로 바꾼다.
+
+    기본값이 특정 계열사라 그냥 긁으면 일부만 나온다. 드롭다운을 열고 '전체'를 고르는
+    두 번의 클릭이 필요하다.
+    """
     _click(driver, By.XPATH, "//div[@class='box_select cursor_hand false']")
     _click(driver, By.XPATH, "//ul[@id='companySelect']/li[span/span[text()='전체']]")
 

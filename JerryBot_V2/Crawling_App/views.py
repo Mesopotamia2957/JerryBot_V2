@@ -37,6 +37,10 @@ def require_api_key(view):
 
 
 def _parse_limit(request):
+    """?limit= 값을 1~MAX_LIMIT 사이로 자른다. 숫자가 아니면 기본값.
+
+    제한을 안 걸면 공고 수천 건이 한 번에 직렬화돼 슬랙 메시지 길이 제한도 넘고 응답도 느려진다.
+    """
     try:
         limit = int(request.query_params.get('limit', DEFAULT_LIMIT))
     except (TypeError, ValueError):
@@ -45,6 +49,10 @@ def _parse_limit(request):
 
 
 def _parse_keywords(request):
+    """?keyword=백엔드,서버 또는 ?keyword=백엔드 서버 를 리스트로 편다.
+
+    쉼표와 공백을 같이 받는 이유는 슬랙에서 사람이 둘 다 쓰기 때문이다.
+    """
     raw = request.query_params.get('keyword') or request.query_params.get('keywords') or ''
     return [part for part in (token.strip() for token in raw.replace(',', ' ').split()) if part]
 
@@ -177,6 +185,12 @@ def subscriber_matches(request, slack_user_id):
 
 @staff_member_required
 def portal_status(request):
+    """관리자 포털 홈이 쓰는 현황 요약(기업·구독자·누적 수치).
+
+    포털은 정적 HTML 이라 DB 를 직접 못 본다. 화면에 필요한 값을 여기서 한 번에 모아 준다.
+    staff_member_required 라 로그인 안 하면 로그인 화면으로 넘어가고, 포털은 그 302 를 보고
+    '로그인하세요' 안내로 바꿔 보여준다.
+    """
     companies = (Company.objects
                  .annotate(open_count=Count('postings', filter=Q(postings__is_open=True)))
                  .order_by('name'))
@@ -233,6 +247,7 @@ def require_web_login(view):
 
 
 def _crawl_request_row(r):
+    """CrawlRequest 한 행을 웹 화면이 쓰는 키 이름(camelCase)으로 바꾼다."""
     return {
         "id": r.id,
         "companyName": r.company_name,

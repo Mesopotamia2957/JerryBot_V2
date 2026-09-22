@@ -16,6 +16,13 @@ from Crawling_App.sites import ENABLED_SITES, get_spec
 
 
 class Command(BaseCommand):
+    """크롤링 배치의 진입점. 평일 09:00/18:00 에 supercronic 이 부른다.
+
+    순서: 기업 정의 동기화 → 대상 선정 → 기업별 크롤링 → (--notify 면) 알림 발송.
+    한 기업이 실패해도 나머지는 계속 돈다 — 사이트 하나가 개편됐다고 그날 수집 전체를
+    날리지 않기 위해서다.
+    """
+
     help = '채용 사이트를 크롤링해 DB에 저장한다.'
 
     def add_arguments(self, parser):
@@ -27,6 +34,11 @@ class Command(BaseCommand):
                             help='알림을 보내지 않고 현재 공고를 전송 완료로만 기록한다(최초 1회).')
 
     def handle(self, *args, **options):
+        """대상 기업을 정하고 하나씩 크롤링한 뒤 결과를 줄 단위로 출력한다.
+
+        --seed-notifications 는 최초 도입용이다. 그냥 켜면 기존 공고 수백 건이 한꺼번에
+        날아가므로, 처음 한 번은 '보낸 것으로 치고' 기록만 남긴다.
+        """
         services.sync_companies()
 
         # 기업을 직접 지정하면 중단된 곳도 돌려본다(복구 확인용).

@@ -1,3 +1,12 @@
+"""Crawling_App 의 URL 목록. 프로젝트 urls.py 가 /api/ 와 /Crawling_App/ 두 곳에 붙인다.
+
+인증 방식이 두 가지로 갈린다.
+    subscribers/*, companies/, postings/, <code>/  슬랙봇 전용. X-API-Key 헤더로 지킨다.
+    jobs/*                                         사람이 브라우저로 쓴다. 슬랙 세션 쿠키로 지킨다.
+
+맨 아래 <str:code>/ 가 남은 경로를 전부 삼키므로 새 경로는 반드시 그 위에 추가할 것.
+"""
+
 from django.urls import path
 
 from . import views

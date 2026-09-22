@@ -105,6 +105,11 @@ def crawl_company(code):
 # ---------------------------------------------------------------------------
 
 def list_postings(company_code=None, keywords=None, only_open=True, limit=None):
+    """공고 조회의 공통 진입점. 기업·키워드·마감 여부로 걸러 QuerySet 을 돌려준다.
+
+    평가하지 않은 QuerySet 을 그대로 준다 — 호출한 쪽에서 count() 와 슬라이싱을 따로 하므로,
+    여기서 list() 로 만들면 전체를 메모리에 올렸다가 버리는 낭비가 생긴다.
+    """
     queryset = JobPosting.objects.select_related('company')
     if only_open:
         queryset = queryset.open()
@@ -142,6 +147,11 @@ def postings_by_date(company_code=None, keywords=None, only_open=True, days=14):
 
 
 def get_or_create_subscriber(slack_user_id, channel_id='', display_name=''):
+    """슬랙 사용자 ID 로 구독자를 찾고, 없으면 만든다.
+
+    '처음 쓰는 사람인지'를 호출하는 쪽이 신경 쓰지 않아도 되게 하는 게 목적이다.
+    channel_id·display_name 은 값이 있을 때만 갱신한다 — 빈 값으로 기존 정보를 덮지 않기 위해.
+    """
     subscriber, created = Subscriber.objects.get_or_create(slack_user_id=slack_user_id)
     changed = False
     if channel_id and subscriber.slack_channel_id != channel_id:
@@ -168,6 +178,11 @@ def add_keywords(subscriber, texts):
 
 
 def remove_keywords(subscriber, texts):
+    """키워드를 지우고 실제로 지워진 것만 돌려준다.
+
+    입력을 소문자로 맞춰서 비교한다(Keyword.save 가 그렇게 저장하므로).
+    없는 키워드를 지우라고 해도 오류가 아니라 빈 리스트로 응답한다.
+    """
     wanted = {raw.strip().lower() for raw in texts if raw.strip()}
     if not wanted:
         return []

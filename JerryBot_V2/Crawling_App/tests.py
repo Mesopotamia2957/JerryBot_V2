@@ -123,6 +123,11 @@ class DropSharedLinksTests(TestCase):
 
 
 class FingerprintTests(TestCase):
+    """같은 공고를 다시 수집했을 때 한 건으로 알아보는지.
+
+    상세 링크가 있으면 링크로, 없으면 제목으로 식별한다. 제목이 살짝 바뀌어도 링크가 같으면
+    같은 공고여야 하고(수정 반영), 링크를 못 뽑는 사이트에서는 제목이 유일한 단서다.
+    """
     def test_link_identifies_posting_when_available(self):
         """링크가 있으면 제목이 바뀌어도 같은 공고로 본다."""
         first = JobPosting.make_fingerprint('https://ex.com/1', '백엔드 개발자', has_link=True)
@@ -138,6 +143,11 @@ class FingerprintTests(TestCase):
 
 
 class StorePostingsTests(TestCase):
+    """크롤링 결과를 DB 에 반영하는 규칙.
+
+    핵심은 '지우지 않는다' 다 — 목록에서 사라진 공고는 삭제가 아니라 is_open=False 로 닫고
+    closed_at 을 찍는다. 다시 나타나면 되살아나야 한다.
+    """
     def setUp(self):
         self.company = Company.objects.create(
             code='naver', name='네이버', career_url='https://recruit.navercorp.com/rcrt/list.do')
@@ -200,6 +210,11 @@ class StorePostingsTests(TestCase):
 
 
 class KeywordMatchingTests(TestCase):
+    """키워드가 공고에 걸리는 기준.
+
+    제목과 meta 를 함께 보고, 대소문자는 구분하지 않으며, 여러 키워드 중 하나만 맞아도 걸린다.
+    이 판정이 곧 '누구에게 알림이 가는가' 라서 느슨해도 촘촘해도 곤란하다.
+    """
     def setUp(self):
         self.company = Company.objects.create(code='naver', name='네이버', career_url='https://ex.com')
         services.store_postings(self.company, [
@@ -229,6 +244,7 @@ class KeywordMatchingTests(TestCase):
 
 
 class SubscriberTests(TestCase):
+    """구독자와 키워드의 저장 규칙. 소문자 정규화와 중복 방지가 실제로 먹는지 본다."""
     def test_keywords_are_normalized_to_lowercase(self):
         subscriber, _ = services.get_or_create_subscriber('U1')
         added, existing = services.add_keywords(subscriber, ['Django', 'BACKEND'])
@@ -262,6 +278,11 @@ class SubscriberTests(TestCase):
 
 
 class NotificationTests(TestCase):
+    """알림 발송 규칙.
+
+    한 번 보낸 공고는 다시 안 보내고(Notification 기록), 알림을 끈 사람은 건너뛰며,
+    한 사람 전송이 실패해도 나머지 구독자 처리는 계속돼야 한다.
+    """
     def setUp(self):
         self.company = Company.objects.create(code='naver', name='네이버', career_url='https://ex.com')
         services.store_postings(self.company, [
@@ -335,6 +356,11 @@ class NotificationTests(TestCase):
 
 
 class SlackClientTests(TestCase):
+    """슬랙 클라이언트를 만들 때 인증서 번들을 명시하는지.
+
+    cron/launchd 처럼 셸 설정이 없는 환경에서 시스템 인증서를 못 찾아 SSL 검증이 실패한 적이
+    있어서, certifi 를 항상 넘기는지 고정해 둔다.
+    """
     def test_client_uses_explicit_ca_bundle(self):
         """macOS 파이썬은 시스템 인증서를 못 찾아 슬랙 전송이 SSL 오류로 실패한다.
 
@@ -352,6 +378,9 @@ class SlackClientTests(TestCase):
 
 
 class SiteSpecTests(TestCase):
+    """sites.py 정의 자체의 무결성. 코드 중복이나 별칭 충돌처럼, 기업을 추가하다 실수하기
+    쉬운 것들을 잡는다. 사이트에 접속하지 않고 정의만 본다.
+    """
     def test_codes_are_unique(self):
         codes = [spec.code for spec in SITES]
         self.assertEqual(len(codes), len(set(codes)))
@@ -377,6 +406,7 @@ class SiteSpecTests(TestCase):
 
 
 class ApiTests(TestCase):
+    """슬랙봇이 호출하는 API 의 응답 모양과 인증(X-API-Key)."""
     def setUp(self):
         self.company = Company.objects.create(code='naver', name='네이버', career_url='https://ex.com')
         services.store_postings(self.company, [row('백엔드 개발자', 'https://ex.com/1')])

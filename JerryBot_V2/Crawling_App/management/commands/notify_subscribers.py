@@ -11,6 +11,12 @@ from Crawling_App import notifications
 
 
 class Command(BaseCommand):
+    """크롤링 없이 알림만 다시 돌린다.
+
+    크롤링은 됐는데 슬랙 전송만 실패했을 때(토큰 만료 등) 수집을 다시 하지 않고
+    발송만 재시도하는 용도.
+    """
+
     help = '구독자에게 키워드에 맞는 신규 공고를 슬랙으로 보낸다.'
 
     def add_arguments(self, parser):
@@ -19,6 +25,7 @@ class Command(BaseCommand):
                             help='전송 없이 현재 공고를 전송 완료로 기록한다(최초 1회).')
 
     def handle(self, *args, **options):
+        """알림이 켜진 구독자 전원을 돌고 사람별 전송 건수를 출력한다."""
         summary = notifications.notify_all(dry_run=options['dry_run'], seed=options['seed'])
 
         if options['seed']:

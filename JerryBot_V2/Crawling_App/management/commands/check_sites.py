@@ -17,9 +17,19 @@ from Crawling_App.sites import ENABLED_SITES, SITES, get_spec
 
 
 class Command(BaseCommand):
+    """셀렉터가 아직 유효한지 확인하는 진단 도구. DB 에는 한 글자도 쓰지 않는다.
+
+    채용 사이트는 예고 없이 개편된다. 그러면 크롤링은 "성공"하면서 0건을 가져오거나,
+    링크가 전부 같은 주소로 뭉개지는 식으로 조용히 망가진다. 배치 로그만 봐서는
+    잘 안 드러나서, 사람이 눈으로 확인할 수 있게 지표를 뽑아 주는 것이 이 명령의 역할이다.
+
+    sites.py 를 고쳤으면 전체 배치를 돌리기 전에 여기부터 통과시킬 것.
+    """
+
     help = '사이트별 크롤링 결과를 진단한다 (DB에 저장하지 않음).'
 
     def add_arguments(self, parser):
+        """--all 은 중단(enabled=False)해 둔 기업까지 검사한다. 복구됐는지 볼 때 쓴다."""
         parser.add_argument('-c', '--company', action='append', default=[],
                             help='기업 코드. 여러 번 지정 가능. 생략하면 전체.')
         parser.add_argument('--sample', type=int, default=1,
@@ -28,6 +38,7 @@ class Command(BaseCommand):
                             help='중단된 기업(enabled=False)까지 함께 검사한다.')
 
     def handle(self, *args, **options):
+        """대상 기업을 정하고 하나씩 진단한 뒤 마지막에 요약을 출력한다."""
         pool = SITES if options['all'] else ENABLED_SITES
         codes = options['company'] or [spec.code for spec in pool]
         results = []
@@ -48,6 +59,11 @@ class Command(BaseCommand):
         self._summarize(results)
 
     def _check(self, spec, sample_size):
+        """기업 하나를 실제로 크롤링해 지표를 뽑고 문제를 진단한다.
+
+        수집 건수만 보면 "0건이 아니니 괜찮다"고 착각하기 쉬워서, 고유 링크 수·고유 제목 수·
+        부가정보 건수를 같이 낸다. 샘플 공고도 몇 건 찍어 눈으로 확인할 수 있게 한다.
+        """
         self.stdout.write(f'\n{"=" * 62}\n{spec.name} ({spec.code})\n{spec.url}')
         started = time.monotonic()
 
@@ -87,6 +103,14 @@ class Command(BaseCommand):
                 'problems': problems, 'elapsed': elapsed}
 
     def _diagnose(self, spec, rows, total, linked, unique_links, unique_titles, with_meta):
+        """지표를 보고 "이건 깨진 것" 을 판정해 사람이 읽을 수 있는 문장으로 돌려준다.
+
+        각 규칙은 실제로 겪은 고장에서 나왔다. 특히 '링크가 전부 같은 주소' 는 네이버에서
+        href="#" 앵커 때문에 터졌던 건으로, 지문(fingerprint)이 겹쳐 공고 수십 건이 한 건으로
+        합쳐졌다. 지금은 크롤러가 막지만 다시 새지 않게 여기서도 계속 본다.
+
+        부가정보를 아예 설정하지 않은 사이트는 정상이므로, 설정했는데 못 뽑을 때만 경고한다.
+        """
         problems = []
 
         if total == 0:
@@ -117,6 +141,7 @@ class Command(BaseCommand):
         return problems
 
     def _summarize(self, results):
+        """기업별 한 줄 + 정상/문제 개수. 기업이 여러 곳이면 위쪽 상세 출력이 길어서 필요하다."""
         if not results:
             return
 

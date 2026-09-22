@@ -43,6 +43,12 @@ def format_postings(postings, header):
 
 
 def _client():
+    """슬랙 Web API 클라이언트. 토큰이 없으면 여기서 바로 막는다.
+
+    slack_sdk 를 지연 임포트하는 이유는 크롤링만 돌리는 경우(알림 없이 수집만) 이 의존성이
+    필요 없기 때문이다. certifi 를 명시하는 건 셸 설정이 없는 cron/launchd 환경에서
+    시스템 인증서를 못 찾아 SSL 검증이 실패하는 것을 막기 위해서다.
+    """
     import ssl
 
     import certifi

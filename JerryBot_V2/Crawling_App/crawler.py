@@ -32,6 +32,12 @@ class CrawlError(Exception):
 
 
 def build_driver(headless=True):
+    """셀레니움 크롬 드라이버를 만든다. 컨테이너에서 도는 걸 전제로 옵션이 잡혀 있다.
+
+    이미지는 끄고(속도), 로케일은 ko-KR 로 못박는다. 로케일을 안 박으면 서버(Docker)에
+    한국어가 없어서 Accept-Language 가 en 이 되고, 네이버 같은 곳이 영문 페이지만 내려줘
+    공고가 몇 건으로 쪼그라든다 — 겉보기엔 'IP 차단'처럼 보여서 한참 헤맸던 부분이다.
+    """
     options = Options()
     if headless:
         options.add_argument('--headless=new')
@@ -84,6 +90,12 @@ SELF = ':self'
 
 
 def _text_of(item, selector, pick='first'):
+    """공고 항목 하나에서 셀렉터로 텍스트를 뽑는다.
+
+    selector 가 SELF 면 항목 전체 텍스트에서 가장 긴 줄을 고른다 — 제목용 셀렉터를 따로
+    못 잡는 사이트에서, 보통 제목이 그 항목에서 제일 긴 줄이라는 경험칙을 쓴다.
+    pick='last' 는 같은 셀렉터가 여러 개 잡힐 때 마지막 것(주로 갱신일자)을 쓰려는 경우다.
+    """
     if not selector:
         return ''
     if selector == SELF:
@@ -170,6 +182,13 @@ def _link_of(item, spec):
 
 
 def _wanted(item, spec, meta):
+    """이 공고를 수집할지 판단한다. 사이트 쪽 필터가 부실할 때 코드에서 한 번 더 거른다.
+
+      require_text  특정 셀렉터의 값이 정확히 일치해야 통과 (예: 상태가 '채용중'인 것만)
+      include_meta  meta 에 이 단어들 중 하나라도 있어야 통과 (예: 개발 직군만)
+
+    둘 다 없으면 전부 통과시킨다.
+    """
     if spec.require_text:
         selector, expected = spec.require_text
         found = item.find_elements(By.CSS_SELECTOR, selector)
@@ -222,6 +241,11 @@ def _collect_page(driver, spec):
 
 
 def _go_next_page(driver, spec):
+    """다음 페이지 버튼을 눌러 넘어간다. 더 갈 곳이 없으면 False.
+
+    JS 로 클릭하는 이유는, 버튼이 화면 밖에 있거나 다른 요소에 가려 있으면
+    셀레니움의 일반 click() 이 ElementClickIntercepted 로 죽기 때문이다.
+    """
     buttons = driver.find_elements(By.CSS_SELECTOR, spec.next_button_selector)
     if not buttons or not buttons[0].is_enabled():
         return False
