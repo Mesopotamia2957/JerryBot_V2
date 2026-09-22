@@ -11,7 +11,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
 from django.db.models import Count, Q
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes
 from rest_framework.response import Response
 
 from . import services, webauth
@@ -247,6 +247,7 @@ def _crawl_request_row(r):
 
 
 @api_view(["GET"])
+@authentication_classes([])  # Caddy basic_auth 헤더와 안 겹치게. 위 설명 참고
 @require_web_login
 def web_me(request, subscriber):
     """로그인한 사람 정보. 프론트가 화면을 그리기 전에 한 번 부른다."""
@@ -260,6 +261,7 @@ def web_me(request, subscriber):
 
 
 @api_view(["GET", "POST", "DELETE"])
+@authentication_classes([])
 @require_web_login
 def web_keywords(request, subscriber):
     """내 키워드 조회(GET)·추가(POST)·삭제(DELETE). 본문: {"keywords": ["백엔드", "django"]}"""
@@ -281,6 +283,7 @@ def web_keywords(request, subscriber):
 
 
 @api_view(["POST"])
+@authentication_classes([])
 @require_web_login
 def web_notify_toggle(request, subscriber):
     """DM 알림 on/off. 본문: {"enabled": true}"""
@@ -291,6 +294,7 @@ def web_notify_toggle(request, subscriber):
 
 
 @api_view(["GET"])
+@authentication_classes([])
 @require_web_login
 def web_postings(request, subscriber):
     """공고 피드. 일자별로 묶어서 준다.
@@ -318,6 +322,7 @@ def web_postings(request, subscriber):
 
 
 @api_view(["GET", "POST"])
+@authentication_classes([])
 @require_web_login
 def web_crawl_requests(request, subscriber):
     """크롤링 추가 요청 게시판.
